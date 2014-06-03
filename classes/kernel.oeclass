@@ -261,18 +261,41 @@ def kernel_devicetree_init(d):
 KERNEL_COMPILE_POSTFUNCS:>USE_kernel_dtc = " do_compile_kernel_dtc"
 do_compile_kernel_dtc() {
     scripts/dtc/dtc -I dts -O dtb ${USE_kernel_dtc_flags} \
-	-o ${KERNEL_DEVICETREE} ${USE_kernel_dtc_source}
+        -o ${KERNEL_DEVICETREE} ${USE_kernel_dtc_source}
+}
+
+KERNEL_COMPILE_POSTFUNCS:>USE_kernel_dtb = " do_compile_kernel_dtb"
+do_compile_kernel_dtb() {
+    oe_runmake ${KERNEL_DEVICETREE}
+}
+
+do_install[postfuncs] += "${KERNEL_INSTALL_POSTFUNCS}"
+KERNEL_INSTALL_POSTFUNCS=""
+
+KERNEL_INSTALL_POSTFUNCS:>USE_kernel_dtb = " do_install_kerneldtb"
+do_install_kerneldtb() {
+    if [ -e arch/${KERNEL_ARCH}/boot/dts/${KERNEL_DEVICETREE} ]; then
+        install -m 0644 arch/${KERNEL_ARCH}/boot/dts/${KERNEL_DEVICETREE} \
+            ${D}${bootdir}/${KERNEL_DEVICETREE_FILENAME}
+    else
+        install -m 0644 arch/${KERNEL_ARCH}/boot/${KERNEL_DEVICETREE} \
+            ${D}${bootdir}/${KERNEL_DEVICETREE_FILENAME}
+    fi
+}
+
+KERNEL_INSTALL_POSTFUNCS:>USE_kernel_dtc = " do_install_kerneldtc"
+do_install_kerneldtc() {
+    install -m 0644 ${KERNEL_DEVICETREE} ${D}${bootdir}/${KERNEL_DEVICETREE_FILENAME}
 }
 
 CLASS_FLAGS += "kernel_perf"
 DEPENDS:>USE_kernel_perf += " libpthread librt libm libdl"
 DO_INSTALL_PERF = ""
-DO_INSTALL_PERF:USE_kernel_perf = "do_install_perf"
-do_install[postfuncs] += "${DO_INSTALL_PERF}"
+KERNEL_INSTALL_POSTFUNCS:>USE_kernel_perf = " do_install_perf"
 do_install_perf () {
-	oe_runmake -C ${S}/tools/perf install DESTDIR=${D} \
-		prefix=${prefix} \
-		bindir=${bindir}
+    oe_runmake -C ${S}/tools/perf install DESTDIR=${D} \
+        prefix=${prefix} \
+        bindir=${bindir}
 }
 PACKAGES:>USE_kernel_perf += " ${PN}-perf ${PN}-perf-doc ${PN}-perf-scripts"
 FILES_${PN}-perf = "${bindir}/perf ${bindir}/trace \
@@ -286,10 +309,6 @@ FILES_${PN}-perf-scripts = "${prefix}/libexec/perf-core"
 do_install_kernel () {
     install -d ${D}${bootdir}
     install -m 0644 ${KERNEL_IMAGE} ${D}${bootdir}/${KERNEL_IMAGE_FILENAME}
-
-    if [ -n "${KERNEL_DEVICETREE}" ] ; then
-	install -m 0644 ${KERNEL_DEVICETREE} ${D}${bootdir}/${KERNEL_DEVICETREE_FILENAME}
-    fi
 
     if (grep -q -i -e '^CONFIG_MODULES=y$' .config); then
 	oe_runmake DEPMOD=echo INSTALL_MOD_PATH="${D}" modules_install
@@ -362,18 +381,32 @@ addtask deploy after install before build
 do_deploy[dirs] = "${IMAGE_DEPLOY_DIR} ${S}"
 REBUILD ?= "1"
 
+do_deploy[postfuncs] += "${KERNEL_DEPLOY_POSTFUNCS}"
+KERNEL_DEPLOY_POSTFUNCS=""
+
+KERNEL_DEPLOY_POSTFUNCS:>USE_kernel_dtb = " do_deploy_kerneldtb"
+KERNEL_DEPLOY_POSTFUNCS:>USE_kernel_dtc = " do_deploy_kerneldtc"
+
+do_deploy_kerneldtc() {
+	install -m 0644 "${KERNEL_DEVICETREE}" \
+	    ${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}
+	md5sum <"${KERNEL_DEVICETREE}" \
+	    >${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}.md5
+}
+
+do_deploy_kerneldtb() {
+	install -m 0644 "arch/${KERNEL_ARCH}/boot/dts/${KERNEL_DEVICETREE}" \
+	    ${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}
+	md5sum <"arch/${KERNEL_ARCH}/boot/dts/${KERNEL_DEVICETREE}" \
+	    >${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}.md5
+}
+
+
 do_deploy() {
     install -m 0644 ${KERNEL_IMAGE} \
 	${IMAGE_DEPLOY_DIR}/${KERNEL_IMAGE_DEPLOY_FILE}
     md5sum <${KERNEL_IMAGE} \
 	>${IMAGE_DEPLOY_DIR}/${KERNEL_IMAGE_DEPLOY_FILE}.md5
-
-    if [ -n "${KERNEL_DEVICETREE}" ] ; then
-	install -m 0644 "${KERNEL_DEVICETREE}" \
-	    ${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}
-	md5sum <"${KERNEL_DEVICETREE}" \
-	    >${IMAGE_DEPLOY_DIR}/${KERNEL_DEVICETREE_DEPLOY_FILE}.md5
-    fi
 
     cd ${IMAGE_DEPLOY_DIR}
     if [ -n "${KERNEL_IMAGE_DEPLOY_LINK}" ] ; then
