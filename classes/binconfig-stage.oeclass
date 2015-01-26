@@ -83,7 +83,14 @@ def binconfig_stage_fixup(d):
                 stage_dir, cross_type, d.get("stage_bindir").lstrip("/"),
                 os.path.basename(filename))
             print "symlinking %s to %s"%(dstlink, srcfile)
-            os.symlink(srcfile, dstlink)
+            import errno
+            try:
+                os.symlink(srcfile, dstlink)
+            except OSError as e:
+                if e.errno == errno.EEXIST:
+                    os.remove(dstlink)
+                    os.symlink(srcfile, dstlink)
+
 
 # Local Variables:
 # mode: python
