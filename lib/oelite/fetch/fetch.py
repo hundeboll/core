@@ -111,7 +111,8 @@ class OEliteUri:
             (src_uri, mirror_uri) = tuple(mirror)
             m = re.match(src_uri, url)
             if m:
-                mirrors.append((mirror_uri, url[m.end():]))
+                e = url.rfind('/')
+                mirrors.append((mirror_uri, url[e:]))
         return mirrors
 
     def init_filter(self, filterstr):
