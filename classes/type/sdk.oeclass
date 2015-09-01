@@ -20,6 +20,11 @@ require conf/paths/sdk.conf
 require conf/paths/sdk-host.conf
 require conf/paths/sdk-target.conf
 
+# Provide information about the sdk cross target
+addhook set_machine to post_recipe_parse first before blacklist
+def set_machine(d):
+    d["SDK_MACHINE_ARCH"] = d.get("MACHINE_ARCH")
+
 BLACKLIST_VAR += "MACHINE"
 BLACKLIST_PREFIX += "MACHINE_"
 
