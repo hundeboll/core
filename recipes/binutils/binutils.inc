@@ -65,7 +65,12 @@ PACKAGES =+ "${PN}-libiberty ${PN}-libiberty-dev"
 FILES_${PN}-libiberty = "${libdir}/libiberty.a"
 FILES_${PN}-libiberty-dev = "${includedir}/libiberty.h"
 
+PROVIDES_${PN}-libopcodes += "libopcodes-${PV}"
+PROVIDES_${PN}-libopcodes[qa] += "allow-missing-soname:libopcodes"
 FILES_${PN}-libopcodes-dev = "${AUTO_PACKAGE_LIBS_LIBDIR_PREFIX}${includedir}/dis-asm.h"
+
+PROVIDES_${PN}-libbfd += "libbfd-${PV}"
+PROVIDES_${PN}-libbfd[qa] += "allow-missing-soname:libbfd"
 FILES_${PN}-libbfd-dev = "${AUTO_PACKAGE_LIBS_LIBDIR_PREFIX}${includedir}/"
 
 FILES_${PN}-dbg += "${AUTO_PACKAGE_LIBS_LIBDIR_PREFIX}${libdir}/.debug"
@@ -75,6 +80,9 @@ AUTO_PACKAGE_UTILS = "\
     addr2line as c++filt gprof ld nm objcopy objdump ranlib readelf elfedit \
     size strip ar strings embedspu"
 AUTO_PACKAGE_UTILS:>TARGET_LIBC_mingw = " dlltool"
+AUTO_PACKAGE_UTILS_DEPENDS = "libbfd"
+AUTO_PACKAGE_UTILS_DEPENDS:>machine = " libc libdl libz"
+AUTO_PACKAGE_UTILS_RDEPENDS:>machine = " libc libdl libz libbfd"
 
 do_install[postfuncs] += "do_install_libiberty"
 do_install_libiberty() {
@@ -114,24 +122,19 @@ FILES_${PN}-dlltool += "${prefix}/${TARGET_ARCH}/bin/dlltool${HOST_EXEEXT}"
 PACKAGES += "${PN}-ldscripts"
 FILES_${PN}-ldscripts = "${prefix}/${TARGET_ARCH}/lib/ldscripts"
 
-RDEPENDS_${PN}-addr2line = "binutils-libbfd"
-DEPENDS_${PN}-as = "libbfd libopcodes"
-RDEPENDS_${PN}-as = "libbfd libopcodes"
-RDEPENDS_${PN}-c++filt = "libbfd"
-RDEPENDS_${PN}-gprof = "libbfd"
-RDEPENDS_${PN}-ld = "libbfd"
-RDEPENDS_${PN}-nm = "libbfd"
-RDEPENDS_${PN}-objcopy = "libbfd"
-RDEPENDS_${PN}-objdump = "libbfd libopcodes"
-DEPENDS_${PN}-objdump = "libbfd libopcodes"
-RDEPENDS_${PN}-libopcodes = "binutils-libbfd"
-RDEPENDS_${PN}-ranlib = "libbfd"
-RDEPENDS_${PN}-readelf = "libbfd"
-RDEPENDS_${PN}-elfedit = "libbfd"
-RDEPENDS_${PN}-size = "libbfd"
-RDEPENDS_${PN}-strip = "libbfd"
-RDEPENDS_${PN}-ar = "libbfd"
-RDEPENDS_${PN}-strings = "libbfd"
+DEPENDS_${PN}-libbfd:>cross = " host:libz"
+DEPENDS_${PN}-libbfd:>machine = " libdl libz libc"
+RDEPENDS_${PN}-libbfd:>machine = " libdl libz libc"
+DEPENDS_${PN}-libopcodes += "libbfd"
+DEPENDS_${PN}-libopcodes:>machine += " libc"
+RDEPENDS_${PN}-libopcodes:>machine += " libbfd libc"
+
+DEPENDS_${PN}-as += "libopcodes"
+RDEPENDS_${PN}-as += "libopcodes"
+DEPENDS_${PN}-objdump += "libopcodes"
+RDEPENDS_${PN}-objdump += "libopcodes"
+DEPENDS_${PN}-gprof:>machine = " libm"
+RDEPENDS_${PN}-gprof:>machine = " libm"
 
 # We need to set a different priority than the highest gcc recipe priority, so
 # that we don't get into multiple provider problems with libbfd.
