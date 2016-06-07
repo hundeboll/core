@@ -1,6 +1,19 @@
 ## Class for packages having binconfig files.
 ##
 ## Rewrites the paths in the binconfig files so that it contains valid dirs.
+##
+## @var BINCONFIG_FILES   Space separated list of glob patterns to match files
+##                        for ${PN}-dev (defaults to "${bindir}/*-config")
+## @var BINCONFIG_GLOB    Glob pattern to match files that need fixup (defaults
+##                        to "${BINCONFIG_FILES}")
+## @var BINCONFIG_PACKAGE Name of cross package with symlink to binconfig files
+##                        (defaults to "${PN}-binconfig")
+## @var BINCONFIG_LIB     Name of package that depends on binconfig package
+##                        (default to "${PN}")
+## @var BINCONFIG_FIXUP_STRIP_DIRS
+##                        Space separated list of directories to fixup in binconfig
+##                        files (default to "${HOST_SYSROOT} ${TARGET_SYSROOT} ${D}
+##                        ${B} ${S}")
 
 require conf/meta.conf
 
@@ -8,6 +21,14 @@ BINCONFIG_FILES ?= "${bindir}/*-config"
 BINCONFIG_GLOB ?= "${BINCONFIG_FILES}"
 FILES_${PN}-dev += "${BINCONFIG_FILES}"
 BINCONFIG_FIXUP_STRIP_DIRS ?= "${HOST_SYSROOT} ${TARGET_SYSROOT} ${D} ${B} ${S}"
+BINCONFIG_PACKAGE ?= "${PN}-binconfig"
+BINCONFIG_LIB ?= "${PN}"
+
+# Add cross package for the binconfig files
+PACKAGES =+ "${BINCONFIG_PACKAGE}"
+PACKAGE_TYPE_${BINCONFIG_PACKAGE} = "${TARGET_CROSS}"
+FILES_${BINCONFIG_PACKAGE} = "${stage_bindir}/*-config"
+DEPENDS_${BINCONFIG_LIB} += "cross:${BINCONFIG_PACKAGE}"
 
 do_install[postfuncs] += "do_install_binconfig_fixup"
 do_install_binconfig_fixup[dirs] = "${D}"
@@ -44,6 +65,15 @@ def do_install_binconfig_fixup(d):
                                     r"=", binconfig_file)
         with open(filename, "w") as output_file:
             output_file.write(binconfig_file)
+
+        # create symlink
+        srcdir = os.path.join("..", "..", "machine", d.get("machine_bindir").lstrip("/"))
+        srcfile = os.path.join(srcdir, os.path.basename(filename))
+        dstdir = os.path.join(d.get("D"), d.get("stage_bindir").lstrip("/"))
+        dstlink = os.path.join(dstdir, os.path.basename(filename))
+        oelite.util.makedirs(dstdir)
+        print "symlinking %s to %s"%(dstlink, srcfile)
+        os.symlink(srcfile, dstlink)
 
 do_split[postfuncs] += "do_split_binconfig_fixup"
 def do_split_binconfig_fixup(d):

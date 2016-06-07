@@ -73,20 +73,6 @@ def binconfig_stage_fixup(d):
                 binconfig_file)
         with open(filename, "w") as output_file:
             output_file.write(binconfig_file)
-        if pkg_type in ("machine", "sdk"):
-            if pkg_type == "sdk":
-                cross_type = "sdk-cross"
-            else:
-                cross_type = "cross"
-            srcfile = os.path.join(sysroot, filename)
-            dstlink = os.path.join(
-                stage_dir, cross_type, d.get("stage_bindir").lstrip("/"),
-                os.path.basename(filename))
-            dstdir = os.path.dirname(dstlink)
-            print("creating destination dir: {}".format(dstdir))
-            oelite.util.makedirs(dstdir)
-            print "symlinking %s to %s"%(dstlink, srcfile)
-            os.symlink(srcfile, dstlink)
 
 # Local Variables:
 # mode: python
